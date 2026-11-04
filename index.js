@@ -2,6 +2,8 @@ var nota = document.getElementById("nota");
 var offsetX, offsetY;
 var ultimoToque = 0;
 var inicioX, inicioY;
+var tiempoInicio;
+var posicionOriginalX, posicionOriginalY;
 
 var editor = document.getElementById("editor");
 var colorNota = document.getElementById("colorNota");
@@ -11,9 +13,15 @@ var cancelarEdicion = document.getElementById("cancelarEdicion");
 var guardarNota = document.getElementById("guardarNota");
 
 nota.addEventListener("touchstart", (e) => {
-    console.log("Has tocado la nota");
+    nota.style.transition = "none";
+    posicionOriginalX = nota.offsetLeft;
+    posicionOriginalY = nota.offsetTop;
+
+    tiempoInicio = Date.now();
+
     console.log(e.touches[0].clientX);
     console.log(e.touches[0].clientY);
+
     offsetX = e.touches[0].clientX - nota.offsetLeft;
     offsetY = e.touches[0].clientY - nota.offsetTop;
     inicioX = e.touches[0].clientX;
@@ -25,6 +33,7 @@ nota.addEventListener("touchmove", (e) => {
 
     nota.style.left = (toque.clientX - offsetX) + "px";
     nota.style.top = (toque.clientY - offsetY) + "px";
+
     console.log(toque.clientX);
 });
 
@@ -32,6 +41,9 @@ nota.addEventListener("touchend", (e) => {
     var fin = e.changedTouches[0];
     var distanciaX = fin.clientX - inicioX;
     var distanciaY = fin.clientY - inicioY;
+    var duracion = Date.now() - tiempoInicio;
+    
+    console.log("El gesto ha durado " + duracion + " ms");
 
     if (Math.abs(distanciaX) < 10 && Math.abs(distanciaY) < 10) {
         var ahora = Date.now();
@@ -45,8 +57,23 @@ nota.addEventListener("touchend", (e) => {
             ultimoToque = ahora;
         }
     } else {
-        console.log("Ha sido un arrastre");
         ultimoToque = 0;
+
+        if (Math.abs(distanciaX) > 80 &&
+            Math.abs(distanciaX) > Math.abs(distanciaY) * 2 &&
+            duracion < 300) {
+            var borrar = confirm("¿Quieres eliminar esta nota?");
+
+            if (borrar) {
+                nota.remove();
+            } else {
+                nota.style.transition = "left 0.25s ease, top 0.25s ease";
+                nota.style.left = posicionOriginalX + "px";
+                nota.style.top = posicionOriginalY + "px";
+            }
+        } else {
+            console.log("Ha sido un arrastre");
+        }
     }
 });
 
