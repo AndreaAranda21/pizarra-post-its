@@ -1,0 +1,9 @@
+#nota{
+    width: 150px;
+    height: 150px;
+    background-color: #fff59d;
+    padding: 15px;
+    position: absolute;
+    left: 40px;
+    top: 60px;
+}
