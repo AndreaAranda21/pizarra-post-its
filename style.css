@@ -6,4 +6,5 @@
     position: absolute;
     left: 40px;
     top: 60px;
+    touch-action: none;
 }
