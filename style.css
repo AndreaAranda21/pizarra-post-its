@@ -1,4 +1,4 @@
-#nota{
+.nota{
     width: 150px;
     height: 150px;
     background-color: #fff59d;
@@ -7,4 +7,17 @@
     left: 40px;
     top: 60px;
     touch-action: none;
+}
+
+#crearNota {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    background-color: #528db8;
+    color: white;
+    font-size: 32px;
 }

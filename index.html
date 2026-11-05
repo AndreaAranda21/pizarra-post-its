@@ -8,18 +8,32 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="nota">Mi primera nota</div>
+    <div id="nota" class="nota">Mi primera nota</div>
     <dialog id="editor">
-    <h2>Editar nota</h2>
+        <h2>Editar nota</h2>
 
-    <label for="textoNota">Texto de la nota</label>
-    <textarea id="textoNota"></textarea>
+        <label for="textoNota">Texto de la nota</label>
+        <textarea id="textoNota"></textarea>
 
-    <label for="colorNota">Color de la nota</label>
-    <input type="color" id="colorNota" value="#fff59d">
+        <label for="colorNota">Color de la nota</label>
+        <input type="color" id="colorNota" value="#fff59d">
 
-    <button id="guardarNota" type="button">Guardar</button>
-    <button id="cancelarEdicion" type="button">Cancelar</button>
-</dialog>
+        <button id="guardarNota" type="button">Guardar</button>
+        <button id="cancelarEdicion" type="button">Cancelar</button>
+    </dialog>
+    <dialog id="creador">
+    <h2>Crear nota</h2>
+
+    <label for="nuevoTexto">Texto</label>
+    <textarea id="nuevoTexto"></textarea>
+
+    <label for="nuevoColor">Color</label>
+    <input type="color" id="nuevoColor" value="#fff59d">
+
+    <button id="confirmarCreacion" type="button">Crear</button>
+    <button id="cancelarCreacion" type="button">Cancelar</button>
+    </dialog>
+    <button id="crearNota" type="button" aria-label="Crear nota">+</button>
+    
 </body>
 </html>
