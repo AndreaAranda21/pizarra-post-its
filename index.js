@@ -54,7 +54,7 @@ function activarGestos(nota) {
         inicioY = e.touches[0].clientY;
     });
 
-    nota.addEventListener("touchmove", (e) => {
+    nota.addEventListener("touchmove",(e) => {
         var toque = e.touches[0];
 
         nota.style.left = (toque.clientX - offsetX) + "px";
@@ -63,7 +63,7 @@ function activarGestos(nota) {
         console.log(toque.clientX);
     });
 
-    nota.addEventListener("touchend", (e) => {
+    nota.addEventListener("touchend", async (e) => {
         var fin = e.changedTouches[0];
         var distanciaX = fin.clientX - inicioX;
         var distanciaY = fin.clientY - inicioY;
@@ -99,7 +99,20 @@ function activarGestos(nota) {
                     nota.style.top = posicionOriginalY + "px";
                 }
             } else {
-                console.log("Ha sido un arrastre");
+                const id = nota.dataset.id;
+
+                if (id) {
+                    try {
+                        await updateDoc(doc(db, "notas", id), {
+                            coordenadaX: parseFloat(nota.style.left),
+                            coordenadaY: parseFloat(nota.style.top)
+                        });
+                    } catch (error) {
+                        nota.style.left = posicionOriginalX + "px";
+                        nota.style.top = posicionOriginalY + "px";
+                        console.error("No se pudo guardar la posición:", error);
+                    }
+                }
             }
         }
     });
@@ -185,6 +198,8 @@ onSnapshot(collection(db, "notas"), (resultado) => {
             notaExistente.textContent = datos.texto;
             notaExistente.dataset.color = datos.color;
             notaExistente.style.backgroundColor = datos.color;
+            notaExistente.style.left = datos.coordenadaX + "px";
+            notaExistente.style.top = datos.coordenadaY + "px";
             return;
         }
 
