@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, serverTimestamp, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -110,10 +110,26 @@ cancelarEdicion.addEventListener("click", () => {
     editor.close();
 });
 
-guardarNota.addEventListener("click", () => {
-    notaSeleccionada.textContent = textoNota.value;
-    notaSeleccionada.dataset.color = colorNota.value;
-    notaSeleccionada.style.backgroundColor = colorNota.value;
+guardarNota.addEventListener("click", async () => {
+    const texto = textoNota.value;
+    const color = colorNota.value;
+    const id = notaSeleccionada.dataset.id;
+
+    if (id) {
+        try {
+            await updateDoc(doc(db, "notas", id), {
+                texto: texto,
+                color: color
+            });
+        } catch (error) {
+            console.error("No se pudo editar la nota:", error);
+            return;
+        }
+    }
+
+    notaSeleccionada.textContent = texto;
+    notaSeleccionada.dataset.color = color;
+    notaSeleccionada.style.backgroundColor = color;
     editor.close();
 });
 
@@ -161,18 +177,22 @@ document.getElementById("cancelarCreacion").addEventListener("click", () => {
 
 onSnapshot(collection(db, "notas"), (resultado) => {
     resultado.docChanges().forEach((cambio) => {
-        if (cambio.type !== "added") {
-            return;
-        }
-
         const id = cambio.doc.id;
-        if (document.querySelector(`.nota[data-id="${id}"]`)) {
+        const notaExistente = document.querySelector(`.nota[data-id="${id}"]`);
+        const datos = cambio.doc.data();
+
+        if (cambio.type === "modified" && notaExistente) {
+            notaExistente.textContent = datos.texto;
+            notaExistente.dataset.color = datos.color;
+            notaExistente.style.backgroundColor = datos.color;
             return;
         }
 
-        const datos = cambio.doc.data();
-        const notaGuardada = document.createElement("div");
+        if (cambio.type !== "added" || notaExistente) {
+            return;
+        }
 
+        const notaGuardada = document.createElement("div");
         notaGuardada.classList.add("nota");
         notaGuardada.dataset.id = id;
         notaGuardada.dataset.color = datos.color;
