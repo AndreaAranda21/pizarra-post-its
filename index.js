@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -128,7 +128,7 @@ document.getElementById("confirmarCreacion").addEventListener("click", async () 
     nuevaNota.style.left = (window.innerWidth - nuevaNota.offsetWidth) / 2 + "px";
     nuevaNota.style.top = (window.innerHeight - nuevaNota.offsetHeight) / 2 + "px";
     const referencia = doc(collection(db, "notas"));
-
+    nuevaNota.dataset.id = referencia.id;
     try {
         await setDoc(referencia, {
             id: referencia.id,
@@ -144,7 +144,7 @@ document.getElementById("confirmarCreacion").addEventListener("click", async () 
         return;
     }
 
-    nuevaNota.dataset.id = referencia.id;
+    
     activarGestos(nuevaNota);
     creador.close();
 });
@@ -157,4 +157,33 @@ crearNota.addEventListener("click", () => {
 
 document.getElementById("cancelarCreacion").addEventListener("click", () => {
     creador.close();
+});
+
+onSnapshot(collection(db, "notas"), (resultado) => {
+    resultado.docChanges().forEach((cambio) => {
+        if (cambio.type !== "added") {
+            return;
+        }
+
+        const id = cambio.doc.id;
+        if (document.querySelector(`.nota[data-id="${id}"]`)) {
+            return;
+        }
+
+        const datos = cambio.doc.data();
+        const notaGuardada = document.createElement("div");
+
+        notaGuardada.classList.add("nota");
+        notaGuardada.dataset.id = id;
+        notaGuardada.dataset.color = datos.color;
+        notaGuardada.textContent = datos.texto;
+        notaGuardada.style.backgroundColor = datos.color;
+        notaGuardada.style.left = datos.coordenadaX + "px";
+        notaGuardada.style.top = datos.coordenadaY + "px";
+
+        document.body.appendChild(notaGuardada);
+        activarGestos(notaGuardada);
+    });
+}, (error) => {
+    console.error("No se pudieron cargar las notas:", error);
 });
