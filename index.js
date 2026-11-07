@@ -1,3 +1,23 @@
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+apiKey: "AIzaSyAR9hIaIyrkgLpBgIhaIdUl4moS1VApXXE",
+authDomain: "pizarra-post-its.firebaseapp.com",
+projectId: "pizarra-post-its",
+storageBucket: "pizarra-post-its.firebasestorage.app",
+messagingSenderId: "918508956198",
+appId: "1:918508956198:web:e3569055f5904a9b5754e7"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);  
+const db = getFirestore(app);
+
 var nota = document.getElementById("nota");
 var editor = document.getElementById("editor");
 var colorNota = document.getElementById("colorNota");
@@ -97,15 +117,34 @@ guardarNota.addEventListener("click", () => {
     editor.close();
 });
 
-document.getElementById("confirmarCreacion").addEventListener("click", () => {
+document.getElementById("confirmarCreacion").addEventListener("click", async () => {
     var nuevaNota = document.createElement("div");
     nuevaNota.classList.add("nota");
     nuevaNota.textContent = nuevoTexto.value;
     nuevaNota.style.backgroundColor = nuevoColor.value;
     nuevaNota.dataset.color = nuevoColor.value;
     document.body.appendChild(nuevaNota);
+
     nuevaNota.style.left = (window.innerWidth - nuevaNota.offsetWidth) / 2 + "px";
     nuevaNota.style.top = (window.innerHeight - nuevaNota.offsetHeight) / 2 + "px";
+    const referencia = doc(collection(db, "notas"));
+
+    try {
+        await setDoc(referencia, {
+            id: referencia.id,
+            texto: nuevaNota.textContent,
+            color: nuevaNota.dataset.color,
+            coordenadaX: parseFloat(nuevaNota.style.left),
+            coordenadaY: parseFloat(nuevaNota.style.top),
+            fechaCreacion: serverTimestamp()
+        });
+    } catch (error) {
+        nuevaNota.remove();
+        console.error("No se pudo guardar la nota:", error);
+        return;
+    }
+
+    nuevaNota.dataset.id = referencia.id;
     activarGestos(nuevaNota);
     creador.close();
 });
