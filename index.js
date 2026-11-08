@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, serverTimestamp, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, serverTimestamp, onSnapshot, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -92,12 +92,23 @@ function activarGestos(nota) {
                 var borrar = confirm("¿Quieres eliminar esta nota?");
 
                 if (borrar) {
-                    nota.remove();
-                } else {
-                    nota.style.transition = "left 0.25s ease, top 0.25s ease";
-                    nota.style.left = posicionOriginalX + "px";
-                    nota.style.top = posicionOriginalY + "px";
+                    const id = nota.dataset.id;
+
+                    try {
+                        if (id) {
+                            await deleteDoc(doc(db, "notas", id));
+                        }
+
+                        nota.remove();
+                        return;
+                    } catch (error) {
+                        console.error("No se pudo borrar la nota:", error);
+                    }
                 }
+
+nota.style.transition = "left 0.25s ease, top 0.25s ease";
+nota.style.left = posicionOriginalX + "px";
+nota.style.top = posicionOriginalY + "px";
             } else {
                 const id = nota.dataset.id;
 
@@ -194,6 +205,10 @@ onSnapshot(collection(db, "notas"), (resultado) => {
         const notaExistente = document.querySelector(`.nota[data-id="${id}"]`);
         const datos = cambio.doc.data();
 
+        if (cambio.type === "removed") {
+            notaExistente?.remove();
+            return;
+        }
         if (cambio.type === "modified" && notaExistente) {
             notaExistente.textContent = datos.texto;
             notaExistente.dataset.color = datos.color;
