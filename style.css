@@ -7,6 +7,8 @@
     left: 40px;
     top: 60px;
     touch-action: none;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
 }
 
 #crearNota {
