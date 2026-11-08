@@ -18,10 +18,8 @@ appId: "1:918508956198:web:e3569055f5904a9b5754e7"
 const app = initializeApp(firebaseConfig);  
 const db = getFirestore(app);
 
-var nota = document.getElementById("nota");
 var editor = document.getElementById("editor");
 var colorNota = document.getElementById("colorNota");
-nota.dataset.color = "#fff59d";
 var textoNota = document.getElementById("textoNota");
 var cancelarEdicion = document.getElementById("cancelarEdicion");
 var guardarNota = document.getElementById("guardarNota");
@@ -129,7 +127,6 @@ nota.style.top = posicionOriginalY + "px";
     });
 }
 
-activarGestos(nota);
 cancelarEdicion.addEventListener("click", () => {
     editor.close();
 });
