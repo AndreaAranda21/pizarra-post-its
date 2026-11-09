@@ -1,38 +1,45 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Pizarra de post-its</title>
     <script type="module" src="index.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <dialog id="editor">
-        <h2>Editar nota</h2>
+    <section id="acceso">
+        <h1>Pizarra de post-its</h1>
+        <button id="entrarGoogle" type="button">Continuar con Google</button>
+        <p id="mensajeAcceso" role="alert"></p>
+    </section>
 
-        <label for="textoNota">Texto de la nota</label>
-        <textarea id="textoNota"></textarea>
+    <main id="pizarra" hidden>
+        <dialog id="editor">
+            <h2>Editar nota</h2>
+            <label for="textoNota">Texto de la nota</label>
+            <textarea id="textoNota"></textarea>
 
-        <label for="colorNota">Color de la nota</label>
-        <input type="color" id="colorNota" value="#fff59d">
+            <label for="colorNota">Color de la nota</label>
+            <input type="color" id="colorNota" value="#fff59d">
 
-        <button id="guardarNota" type="button">Guardar</button>
-        <button id="cancelarEdicion" type="button">Cancelar</button>
-    </dialog>
-    <dialog id="creador">
-    <h2>Crear nota</h2>
+            <button id="guardarNota" type="button">Guardar</button>
+            <button id="cancelarEdicion" type="button">Cancelar</button>
+        </dialog>
 
-    <label for="nuevoTexto">Texto</label>
-    <textarea id="nuevoTexto"></textarea>
+        <dialog id="creador">
+            <h2>Crear nota</h2>
+            <label for="nuevoTexto">Texto</label>
+            <textarea id="nuevoTexto"></textarea>
 
-    <label for="nuevoColor">Color</label>
-    <input type="color" id="nuevoColor" value="#fff59d">
+            <label for="nuevoColor">Color</label>
+            <input type="color" id="nuevoColor" value="#fff59d">
 
-    <button id="confirmarCreacion" type="button">Crear</button>
-    <button id="cancelarCreacion" type="button">Cancelar</button>
-    </dialog>
-    <button id="crearNota" type="button" aria-label="Crear nota">+</button>
-    
+            <button id="confirmarCreacion" type="button">Crear</button>
+            <button id="cancelarCreacion" type="button">Cancelar</button>
+        </dialog>
+
+        <button id="crearNota" type="button" aria-label="Crear nota">+</button>
+    </main>
 </body>
 </html>

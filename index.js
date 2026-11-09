@@ -11,6 +11,13 @@ import {
     deleteDoc
 } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 
+import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup,
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
+
 // estos datos identifican mi proyecto de firebase
 const firebaseConfig = {
     apiKey: "AIzaSyAR9hIaIyrkgLpBgIhaIdUl4moS1VApXXE",
@@ -23,6 +30,27 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+const auth = getAuth(app);
+const acceso = document.getElementById("acceso");
+const entrarGoogle = document.getElementById("entrarGoogle");
+const pizarra = document.getElementById("pizarra");
+const mensajeAcceso = document.getElementById("mensajeAcceso");
+
+const proveedorGoogle = new GoogleAuthProvider();
+proveedorGoogle.setCustomParameters({ prompt: "select_account" });
+
+// abro la ventana de google al pulsar el botón
+entrarGoogle.addEventListener("click", async () => {
+    mensajeAcceso.textContent = "";
+
+    try {
+        await signInWithPopup(auth, proveedorGoogle);
+    } catch (error) {
+        mensajeAcceso.textContent = "No se pudo entrar con Google. Inténtalo otra vez.";
+        console.error("Error al iniciar sesión:", error.code);
+    }
+});
 
 // cojo los botones y los campos de los dos formularios
 var editor = document.getElementById("editor");
@@ -179,7 +207,7 @@ document.getElementById("confirmarCreacion").addEventListener("click", async () 
     nuevaNota.textContent = nuevoTexto.value;
     nuevaNota.style.backgroundColor = nuevoColor.value;
     nuevaNota.dataset.color = nuevoColor.value;
-    document.body.appendChild(nuevaNota);
+    pizarra.appendChild(nuevaNota);
 
     // resto el tamaño de la nota al de la pantalla para centrarla
     nuevaNota.style.left = (window.innerWidth - nuevaNota.offsetWidth) / 2 + "px";
@@ -224,49 +252,72 @@ document.getElementById("cancelarCreacion").addEventListener("click", () => {
 });
 
 // recibo las notas al abrir la pizarra y después los cambios sin recargar
-onSnapshot(collection(db, "notas"), (resultado) => {
-    // doc changes me dice qué documentos se han añadido cambiado o borrado
-    resultado.docChanges().forEach((cambio) => {
-        const id = cambio.doc.id;
-        const notaExistente = document.querySelector(`.nota[data-id="${id}"]`);
-        const datos = cambio.doc.data();
-
-        // removed indica que la nota se ha borrado en firestore
-        if (cambio.type === "removed") {
-            // solo la quito si existe en la pantalla
-            notaExistente?.remove();
-            return;
-        }
-
-        // modified indica que han cambiado los datos de una nota que ya existe
-        if (cambio.type === "modified" && notaExistente) {
-            notaExistente.textContent = datos.texto;
-            notaExistente.dataset.color = datos.color;
-            notaExistente.style.backgroundColor = datos.color;
-            notaExistente.style.left = datos.coordenadaX + "px";
-            notaExistente.style.top = datos.coordenadaY + "px";
-            return;
-        }
-
-        // added indica que firestore me está mostrando esa nota por primera vez
-        // compruebo el id para evitar que salga dos veces
-        if (cambio.type !== "added" || notaExistente) {
-            return;
-        }
-
-        // pongo la nota en pantalla con los datos y la posición guardados
-        const notaGuardada = document.createElement("div");
-        notaGuardada.classList.add("nota");
-        notaGuardada.dataset.id = id;
-        notaGuardada.dataset.color = datos.color;
-        notaGuardada.textContent = datos.texto;
-        notaGuardada.style.backgroundColor = datos.color;
-        notaGuardada.style.left = datos.coordenadaX + "px";
-        notaGuardada.style.top = datos.coordenadaY + "px";
-
-        document.body.appendChild(notaGuardada);
-        activarGestos(notaGuardada);
+function escucharNotas() {
+    return onSnapshot(collection(db, "notas"), (resultado) => {
+        // doc changes me dice qué documentos se han añadido cambiado o borrado
+        resultado.docChanges().forEach((cambio) => {
+            const id = cambio.doc.id;
+            const notaExistente = document.querySelector(`.nota[data-id="${id}"]`);
+            const datos = cambio.doc.data();
+    
+            // removed indica que la nota se ha borrado en firestore
+            if (cambio.type === "removed") {
+                // solo la quito si existe en la pantalla
+                notaExistente?.remove();
+                return;
+            }
+    
+            // modified indica que han cambiado los datos de una nota que ya existe
+            if (cambio.type === "modified" && notaExistente) {
+                notaExistente.textContent = datos.texto;
+                notaExistente.dataset.color = datos.color;
+                notaExistente.style.backgroundColor = datos.color;
+                notaExistente.style.left = datos.coordenadaX + "px";
+                notaExistente.style.top = datos.coordenadaY + "px";
+                return;
+            }
+    
+            // added indica que firestore me está mostrando esa nota por primera vez
+            // compruebo el id para evitar que salga dos veces
+            if (cambio.type !== "added" || notaExistente) {
+                return;
+            }
+    
+            // pongo la nota en pantalla con los datos y la posición guardados
+            const notaGuardada = document.createElement("div");
+            notaGuardada.classList.add("nota");
+            notaGuardada.dataset.id = id;
+            notaGuardada.dataset.color = datos.color;
+            notaGuardada.textContent = datos.texto;
+            notaGuardada.style.backgroundColor = datos.color;
+            notaGuardada.style.left = datos.coordenadaX + "px";
+            notaGuardada.style.top = datos.coordenadaY + "px";
+    
+            pizarra.appendChild(notaGuardada);
+            activarGestos(notaGuardada);
+        });
+    }, (error) => {
+        console.error("No se pudieron cargar las notas:", error);
     });
-}, (error) => {
-    console.error("No se pudieron cargar las notas:", error);
+}
+
+let dejarDeEscuchar;
+
+// enseño la pizarra solo si el usuario ha iniciado sesión
+onAuthStateChanged(auth, (usuario) => {
+    if (dejarDeEscuchar) {
+        dejarDeEscuchar();
+        dejarDeEscuchar = null;
+    }
+
+    pizarra.querySelectorAll(".nota").forEach((nota) => nota.remove());
+    acceso.hidden = Boolean(usuario);
+    pizarra.hidden = !usuario;
+
+    if (usuario) {
+        dejarDeEscuchar = escucharNotas();
+    } else {
+        editor.close();
+        creador.close();
+    }
 });
