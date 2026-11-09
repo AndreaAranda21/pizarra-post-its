@@ -64,6 +64,21 @@ var nuevoTexto = document.getElementById("nuevoTexto");
 var nuevoColor = document.getElementById("nuevoColor");
 var notaSeleccionada = null;
 
+// coloco la nota dentro de la parte visible de la pizarra
+function colocarNota(nota, x, y) {
+    const maxX = Math.max(8, pizarra.clientWidth - nota.offsetWidth - 8);
+    const maxY = Math.max(56, pizarra.clientHeight - nota.offsetHeight - crearNota.offsetHeight - 20);
+    nota.style.left = Math.max(8, Math.min(x, maxX)) + "px";
+    nota.style.top = Math.max(56, Math.min(y, maxY)) + "px";
+}
+
+// ajusto las notas al cambiar el tamaño de la pantalla sin guardar el cambio en firestore
+window.addEventListener("resize", () => {
+    pizarra.querySelectorAll(".nota").forEach((nota) => {
+        colocarNota(nota, Number(nota.dataset.x), Number(nota.dataset.y));
+    });
+});
+
 function activarGestos(nota) {
     var offsetX, offsetY;
     var ultimoToque = 0;
@@ -91,8 +106,7 @@ function activarGestos(nota) {
     nota.addEventListener("touchmove", (e) => {
         var toque = e.touches[0];
 
-        nota.style.left = (toque.clientX - offsetX) + "px";
-        nota.style.top = (toque.clientY - offsetY) + "px";
+        colocarNota(nota, toque.clientX - offsetX, toque.clientY - offsetY);
 
         console.log(toque.clientX);
     });
@@ -210,8 +224,10 @@ document.getElementById("confirmarCreacion").addEventListener("click", async () 
     pizarra.appendChild(nuevaNota);
 
     // resto el tamaño de la nota al de la pantalla para centrarla
-    nuevaNota.style.left = (window.innerWidth - nuevaNota.offsetWidth) / 2 + "px";
-    nuevaNota.style.top = (window.innerHeight - nuevaNota.offsetHeight) / 2 + "px";
+    colocarNota(nuevaNota, (pizarra.clientWidth - nuevaNota.offsetWidth) / 2,
+        (pizarra.clientHeight - nuevaNota.offsetHeight) / 2);
+    nuevaNota.dataset.x = parseFloat(nuevaNota.style.left);
+    nuevaNota.dataset.y = parseFloat(nuevaNota.style.top);
 
     // preparo un documento con un id nuevo en la colección de notas
     const referencia = doc(collection(db, "notas"));
@@ -225,8 +241,8 @@ document.getElementById("confirmarCreacion").addEventListener("click", async () 
             id: referencia.id,
             texto: nuevaNota.textContent,
             color: nuevaNota.dataset.color,
-            coordenadaX: parseFloat(nuevaNota.style.left),
-            coordenadaY: parseFloat(nuevaNota.style.top),
+            coordenadaX: Number(nuevaNota.dataset.x),
+            coordenadaY: Number(nuevaNota.dataset.y),
             // uso la fecha del servidor para guardar cuándo se ha creado
             fechaCreacion: serverTimestamp()
         });
@@ -257,7 +273,7 @@ function escucharNotas() {
         // doc changes me dice qué documentos se han añadido cambiado o borrado
         resultado.docChanges().forEach((cambio) => {
             const id = cambio.doc.id;
-            const notaExistente = document.querySelector(`.nota[data-id="${id}"]`);
+            const notaExistente = pizarra.querySelector(`.nota[data-id="${id}"]`);
             const datos = cambio.doc.data();
     
             // removed indica que la nota se ha borrado en firestore
@@ -272,8 +288,9 @@ function escucharNotas() {
                 notaExistente.textContent = datos.texto;
                 notaExistente.dataset.color = datos.color;
                 notaExistente.style.backgroundColor = datos.color;
-                notaExistente.style.left = datos.coordenadaX + "px";
-                notaExistente.style.top = datos.coordenadaY + "px";
+                notaExistente.dataset.x = datos.coordenadaX;
+                notaExistente.dataset.y = datos.coordenadaY;
+                colocarNota(notaExistente, datos.coordenadaX, datos.coordenadaY);
                 return;
             }
     
@@ -290,10 +307,11 @@ function escucharNotas() {
             notaGuardada.dataset.color = datos.color;
             notaGuardada.textContent = datos.texto;
             notaGuardada.style.backgroundColor = datos.color;
-            notaGuardada.style.left = datos.coordenadaX + "px";
-            notaGuardada.style.top = datos.coordenadaY + "px";
+            notaGuardada.dataset.x = datos.coordenadaX;
+            notaGuardada.dataset.y = datos.coordenadaY;
     
             pizarra.appendChild(notaGuardada);
+            colocarNota(notaGuardada, datos.coordenadaX, datos.coordenadaY);
             activarGestos(notaGuardada);
         });
     }, (error) => {
