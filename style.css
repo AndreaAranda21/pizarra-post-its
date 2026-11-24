@@ -1,28 +1,50 @@
+/* oculta los elementos que tienen hidden */
 [hidden] {
     display: none !important;
 }
 
+/* quito el margen de la pagina */
 body {
     margin: 0;
 }
 
+/* pantalla de inicio de sesion */
 #acceso {
     padding: 24px;
     text-align: center;
 }
 
+/* la pizarra ocupa toda la pantalla */
 #pizarra {
     position: fixed;
     inset: 0;
     overflow: hidden;
 }
 
+/* titulo de la pizarra */
 #tituloPizarra {
     margin: 12px 0 0;
     text-align: center;
     font-size: 28px;
 }
 
+/* informacion del usuario arriba a la derecha */
+#usuario {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+}
+
+/* foto redonda del usuario */
+#fotoUsuario {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+}
+
+/* aspecto de cada nota */
 .nota {
     box-sizing: border-box;
     width: min(180px, 34vw, 35vh);
@@ -31,12 +53,17 @@ body {
     padding: clamp(8px, 3vw, 15px);
     font-size: clamp(13px, 4vw, 16px);
     position: absolute;
+
+    /* permite mover la nota con el dedo */
     touch-action: none;
+
+    /* evita que el texto salga de la nota */
     overflow-wrap: anywhere;
     white-space: pre-wrap;
     overflow: hidden;
 }
 
+/* boton redondo para crear notas */
 #crearNota {
     position: fixed;
     right: 12px;

@@ -8,17 +8,34 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+    <!-- pantalla para iniciar sesion con google -->
     <section id="acceso">
         <h1>Pizarra de post-its</h1>
-        <button id="entrarGoogle" type="button">Continuar con Google</button>
+        <button id="entrarGoogle" type="button">
+            Continuar con Google
+        </button>
         <p id="mensajeAcceso" role="alert"></p>
     </section>
 
+    <!-- pizarra oculta hasta iniciar sesion -->
     <main id="pizarra" hidden>
+
         <h1 id="tituloPizarra">Pizarra</h1>
 
+        <!-- informacion del usuario conectado -->
+        <div id="usuario">
+            <span id="nombreUsuario"></span>
+            <img id="fotoUsuario" alt="Foto del usuario">
+            <button id="cerrarSesion" type="button">
+                Cerrar sesion
+            </button>
+        </div>
+
+        <!-- ventana para editar una nota -->
         <dialog id="editor">
             <h2>Editar nota</h2>
+
             <label for="textoNota">Texto de la nota</label>
             <textarea id="textoNota"></textarea>
 
@@ -29,8 +46,10 @@
             <button id="cancelarEdicion" type="button">Cancelar</button>
         </dialog>
 
+        <!-- ventana para crear una nota -->
         <dialog id="creador">
             <h2>Crear nota</h2>
+
             <label for="nuevoTexto">Texto</label>
             <textarea id="nuevoTexto"></textarea>
 
@@ -41,7 +60,11 @@
             <button id="cancelarCreacion" type="button">Cancelar</button>
         </dialog>
 
-        <button id="crearNota" type="button" aria-label="Crear nota">+</button>
+        <!-- boton para abrir la ventana de creacion -->
+        <button id="crearNota" type="button" aria-label="Crear nota">
+            +
+        </button>
+
     </main>
 </body>
 </html>

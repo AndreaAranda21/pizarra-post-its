@@ -1,24 +1,37 @@
-// importo las herramientas de firebase que uso en la pizarra
+// importo las herramientas de firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
 import {
+    // permite acceder a firestore donde guardo las notas
     getFirestore,
+    // hace referencia a una coleccion de documentos
     collection,
+    // hace referencia a un documento concreto
     doc,
-    setDoc,
+    // crea un documento con un id automatico
+    addDoc,
+    // obtiene la fecha y hora del servidor
     serverTimestamp,
+    // escucha los cambios de la base de datos en tiempo real
     onSnapshot,
+    // modifica los campos de un documento existente
     updateDoc,
+    // elimina un documento de la base de datos
     deleteDoc
 } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
-
 import {
+    // permite utilizar la autenticacion de firebase
     getAuth,
+    // indica que uso google para iniciar sesion
     GoogleAuthProvider,
+    // abre una ventana para iniciar sesion
     signInWithPopup,
-    onAuthStateChanged
+    // detecta si el usuario entra o sale de su cuenta
+    onAuthStateChanged,
+    // cierra la sesion del usuario
+    signOut
 } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
 
-// estos datos identifican mi proyecto de firebase
+// datos de mi proyecto de firebase
 const firebaseConfig = {
     apiKey: "AIzaSyAR9hIaIyrkgLpBgIhaIdUl4moS1VApXXE",
     authDomain: "pizarra-post-its.firebaseapp.com",
@@ -28,314 +41,417 @@ const firebaseConfig = {
     appId: "1:918508956198:web:e3569055f5904a9b5754e7"
 };
 
+// inicio firebase
 const app = initializeApp(firebaseConfig);
+
+// conexion con la base de datos
 const db = getFirestore(app);
 
+// conexion con la autenticacion
 const auth = getAuth(app);
-const acceso = document.getElementById("acceso");
-const entrarGoogle = document.getElementById("entrarGoogle");
-const pizarra = document.getElementById("pizarra");
-const mensajeAcceso = document.getElementById("mensajeAcceso");
 
-const proveedorGoogle = new GoogleAuthProvider();
-proveedorGoogle.setCustomParameters({ prompt: "select_account" });
+// cojo los elementos del inicio de sesion
+var acceso = document.getElementById("acceso");
+var entrarGoogle = document.getElementById("entrarGoogle");
+var mensajeAcceso = document.getElementById("mensajeAcceso");
+var pizarra = document.getElementById("pizarra");
 
-// abro la ventana de google al pulsar el botón
-entrarGoogle.addEventListener("click", async () => {
-    mensajeAcceso.textContent = "";
+// cojo los elementos del usuario
+var nombreUsuario = document.getElementById("nombreUsuario");
+var fotoUsuario = document.getElementById("fotoUsuario");
+var cerrarSesion = document.getElementById("cerrarSesion");
 
-    try {
-        await signInWithPopup(auth, proveedorGoogle);
-    } catch (error) {
-        mensajeAcceso.textContent = "No se pudo entrar con Google. Inténtalo otra vez.";
-        console.error("Error al iniciar sesión:", error.code);
-    }
-});
-
-// cojo los botones y los campos de los dos formularios
+// cojo los elementos para editar una nota
 var editor = document.getElementById("editor");
 var colorNota = document.getElementById("colorNota");
 var textoNota = document.getElementById("textoNota");
 var cancelarEdicion = document.getElementById("cancelarEdicion");
 var guardarNota = document.getElementById("guardarNota");
+
+// cojo los elementos para crear una nota
 var crearNota = document.getElementById("crearNota");
 var creador = document.getElementById("creador");
 var nuevoTexto = document.getElementById("nuevoTexto");
 var nuevoColor = document.getElementById("nuevoColor");
+
+// guardo la nota que estoy editando
 var notaSeleccionada = null;
 
-// coloco la nota dentro de la parte visible de la pizarra
+// guardo la funcion que deja de escuchar las notas
+var dejarDeEscuchar = null;
+
+// utilizo google para iniciar sesion
+const proveedorGoogle = new GoogleAuthProvider();
+
+// permito elegir la cuenta de google
+proveedorGoogle.setCustomParameters({
+    prompt: "select_account"
+});
+
+// abro la ventana de google
+entrarGoogle.addEventListener("click", async () => {
+    mensajeAcceso.textContent = "";
+    try {
+        await signInWithPopup(auth, proveedorGoogle);
+    } catch (error) {
+        mensajeAcceso.textContent = "No se pudo iniciar sesion";
+        // muestro el error en la consola del navegador
+        console.error(error);
+    }
+});
+
+// cierro la sesion del usuario
+cerrarSesion.addEventListener("click", async () => {
+    await signOut(auth);
+});
+
+// coloco la nota sin que se salga de la pantalla
 function colocarNota(nota, x, y) {
+    // calculo el limite derecho dejando 8 pixeles de margen
     const maxX = Math.max(8, pizarra.clientWidth - nota.offsetWidth - 8);
-    const maxY = Math.max(56, pizarra.clientHeight - nota.offsetHeight - crearNota.offsetHeight - 20);
+    // calculo el limite inferior dejando espacio para el boton de crear
+    const maxY = Math.max(100, pizarra.clientHeight - nota.offsetHeight - crearNota.offsetHeight - 20);
+    // limito x para que la nota no salga por la izquierda ni por la derecha
     nota.style.left = Math.max(8, Math.min(x, maxX)) + "px";
-    nota.style.top = Math.max(56, Math.min(y, maxY)) + "px";
+    // limito y para dejar espacio arriba y evitar que salga por abajo
+    nota.style.top = Math.max(100, Math.min(y, maxY)) + "px";
 }
 
-// ajusto las notas al cambiar el tamaño de la pantalla sin guardar el cambio en firestore
+// ajusto las notas cuando cambia el tamaño de la pantalla
 window.addEventListener("resize", () => {
     pizarra.querySelectorAll(".nota").forEach((nota) => {
         colocarNota(nota, Number(nota.dataset.x), Number(nota.dataset.y));
     });
 });
 
+// funcion para mover editar y borrar las notas
 function activarGestos(nota) {
+    // distancia entre el dedo y la esquina de la nota
     var offsetX, offsetY;
-    var ultimoToque = 0;
+    // coordenadas donde empieza el gesto
     var inicioX, inicioY;
+    // momento en el que empieza el gesto en milisegundos
     var tiempoInicio;
+    // momento del ultimo toque para detectar el doble toque
+    var ultimoToque = 0;
+    // posicion a la que vuelve la nota si cancelo o falla el guardado
     var posicionOriginalX, posicionOriginalY;
 
+    // detecto cuando pongo el dedo sobre la nota
     nota.addEventListener("touchstart", (e) => {
+        // quito la animacion para que la nota siga al dedo sin retraso
         nota.style.transition = "none";
+
+        // guardo la posicion original de la nota
         posicionOriginalX = nota.offsetLeft;
         posicionOriginalY = nota.offsetTop;
+
+        // guardo el momento en el que empieza el gesto
         tiempoInicio = Date.now();
 
-        console.log(e.touches[0].clientX);
-        console.log(e.touches[0].clientY);
-
-        // guardo la distancia del dedo al borde para que la nota no salte
-        offsetX = e.touches[0].clientX - nota.offsetLeft;
-        offsetY = e.touches[0].clientY - nota.offsetTop;
+        // guardo la posicion del dedo
         inicioX = e.touches[0].clientX;
         inicioY = e.touches[0].clientY;
+
+        // calculo la distancia entre el dedo y la nota
+        offsetX = inicioX - nota.offsetLeft;
+        offsetY = inicioY - nota.offsetTop;
     });
 
-    // muevo la nota según la posición del dedo
+    // muevo la nota siguiendo el dedo
     nota.addEventListener("touchmove", (e) => {
+        // cojo el primer dedo que esta tocando la pantalla
         var toque = e.touches[0];
-
-        colocarNota(nota, toque.clientX - offsetX, toque.clientY - offsetY);
-
-        console.log(toque.clientX);
+        colocarNota(
+            nota,
+            toque.clientX - offsetX,
+            toque.clientY - offsetY
+        );
     });
 
-    // async me permite usar await para esperar a firestore
+    // compruebo que gesto he realizado al levantar el dedo
     nota.addEventListener("touchend", async (e) => {
-        // changed touches me da los datos del dedo que acabo de levantar
+
+        // cojo la posicion final del dedo
+        // cojo la posicion del dedo que acaba de levantarse
         var fin = e.changedTouches[0];
+
+        // calculo cuanto se ha movido el dedo
         var distanciaX = fin.clientX - inicioX;
         var distanciaY = fin.clientY - inicioY;
+
+        // calculo cuanto ha durado el gesto
         var duracion = Date.now() - tiempoInicio;
 
-        console.log("El gesto ha durado " + duracion + " ms");
+        // cojo el id de la nota
+        const id = nota.dataset.id;
 
-        // uso el valor absoluto para medir lo que se mueve en cualquier dirección
+        // cojo el id del usuario conectado
+        // el uid identifica al usuario y lo uso como nombre de su coleccion
+        const uid = auth.currentUser.uid;
+
+        // compruebo si solo ha sido un toque
+        // math abs convierte la distancia en positiva para medir en cualquier direccion
         if (Math.abs(distanciaX) < 10 && Math.abs(distanciaY) < 10) {
+            // obtengo el momento actual en milisegundos
             var ahora = Date.now();
 
-            // si pasan menos de 300 milisegundos entre los dos toques abro el editor
+            // compruebo si he realizado dos toques seguidos
+            // si han pasado menos de 300 milisegundos desde el toque anterior abro el editor
             if (ultimoToque !== 0 && ahora - ultimoToque < 300) {
+
+                // guardo la nota que quiero editar
                 notaSeleccionada = nota;
+
+                // pongo su texto y color en el editor
                 textoNota.value = nota.textContent;
                 colorNota.value = nota.dataset.color;
+
+                // abro el editor
                 editor.showModal();
                 ultimoToque = 0;
             } else {
+                // si es el primer toque guardo su hora para compararla con el siguiente
                 ultimoToque = ahora;
             }
         } else {
             ultimoToque = 0;
 
-            // si deslizo rápido y más hacia un lado que hacia arriba o abajo pregunto si quiero borrar
+            // compruebo si he deslizado rapido hacia un lado
+            // es un swipe si recorre mas de 80 pixeles en horizontal el doble que en vertical y tarda menos de 300 milisegundos
             if (Math.abs(distanciaX) > 80 &&
                 Math.abs(distanciaX) > Math.abs(distanciaY) * 2 &&
                 duracion < 300) {
-                var borrar = confirm("¿Quieres eliminar esta nota?");
 
-                if (borrar) {
-                    const id = nota.dataset.id;
-
+                // pregunto si quiero borrar la nota
+                if (confirm("¿Quieres eliminar esta nota?")) {
                     try {
-                        if (id) {
-                            // await espera a que firestore confirme el borrado
-                            await deleteDoc(doc(db, "notas", id));
-                        }
 
-                        nota.remove();
+                        // borro la nota de la coleccion del usuario
+                        // uid es la coleccion del usuario e id es el documento de la nota
+                        await deleteDoc(doc(db, uid, id));
+                        // salgo de este bloque de la funcion para no continuar con el resto
                         return;
                     } catch (error) {
-                        console.error("No se pudo borrar la nota:", error);
+                        // muestro el error en la consola del navegador
+                        console.error(error);
                     }
                 }
 
-                // si cancelo o hay un error devuelvo la nota a su sitio
+                // devuelvo la nota a su posicion si no se borra
                 nota.style.transition = "left 0.25s ease, top 0.25s ease";
                 nota.style.left = posicionOriginalX + "px";
                 nota.style.top = posicionOriginalY + "px";
             } else {
-                const id = nota.dataset.id;
+                try {
 
-                if (id) {
-                    try {
-                        // guardo las coordenadas como números al soltar la nota
-                        await updateDoc(doc(db, "notas", id), {
-                            coordenadaX: parseFloat(nota.style.left),
-                            coordenadaY: parseFloat(nota.style.top)
-                        });
-                    } catch (error) {
-                        nota.style.left = posicionOriginalX + "px";
-                        nota.style.top = posicionOriginalY + "px";
-                        console.error("No se pudo guardar la posición:", error);
-                    }
+                    // actualizo la posicion de la nota en firebase
+                    // busco el documento por su id dentro de la coleccion del usuario
+                    await updateDoc(doc(db, uid, id), {
+                        // convierto la posicion de texto con px a un numero
+                        coordenadaX: parseFloat(nota.style.left),
+                        coordenadaY: parseFloat(nota.style.top)
+                    });
+                } catch (error) {
+
+                    // recupero la posicion anterior si hay un error
+                    nota.style.left = posicionOriginalX + "px";
+                    nota.style.top = posicionOriginalY + "px";
+                    // muestro el error en la consola del navegador
+                    console.error(error);
                 }
             }
         }
     });
 }
 
+// cierro el editor sin guardar
 cancelarEdicion.addEventListener("click", () => {
     editor.close();
 });
 
-// guardo el texto y el color de la nota que estoy editando
+// guardo los cambios de una nota
 guardarNota.addEventListener("click", async () => {
-    const texto = textoNota.value;
-    const color = colorNota.value;
+
+    // cojo el id del usuario conectado
+    // el uid identifica al usuario y lo uso como nombre de su coleccion
+    const uid = auth.currentUser.uid;
+
+    // cojo el id de la nota seleccionada
     const id = notaSeleccionada.dataset.id;
-
-    if (id) {
-        try {
-            // actualizo solo estos dos campos del documento
-            await updateDoc(doc(db, "notas", id), {
-                texto: texto,
-                color: color
-            });
-        } catch (error) {
-            console.error("No se pudo editar la nota:", error);
-            return;
-        }
-    }
-
-    notaSeleccionada.textContent = texto;
-    notaSeleccionada.dataset.color = color;
-    notaSeleccionada.style.backgroundColor = color;
-    editor.close();
-});
-
-// creo la nota con el texto y el color que he elegido
-document.getElementById("confirmarCreacion").addEventListener("click", async () => {
-    var nuevaNota = document.createElement("div");
-    nuevaNota.classList.add("nota");
-    nuevaNota.textContent = nuevoTexto.value;
-    nuevaNota.style.backgroundColor = nuevoColor.value;
-    nuevaNota.dataset.color = nuevoColor.value;
-    pizarra.appendChild(nuevaNota);
-
-    // resto el tamaño de la nota al de la pantalla para centrarla
-    colocarNota(nuevaNota, (pizarra.clientWidth - nuevaNota.offsetWidth) / 2,
-        (pizarra.clientHeight - nuevaNota.offsetHeight) / 2);
-    nuevaNota.dataset.x = parseFloat(nuevaNota.style.left);
-    nuevaNota.dataset.y = parseFloat(nuevaNota.style.top);
-
-    // preparo un documento con un id nuevo en la colección de notas
-    const referencia = doc(collection(db, "notas"));
-
-    // guardo el id en la nota para encontrar su documento al editarla o borrarla
-    nuevaNota.dataset.id = referencia.id;
-
     try {
-        // espero a que firestore guarde la nota antes de cerrar el formulario
-        await setDoc(referencia, {
-            id: referencia.id,
-            texto: nuevaNota.textContent,
-            color: nuevaNota.dataset.color,
-            coordenadaX: Number(nuevaNota.dataset.x),
-            coordenadaY: Number(nuevaNota.dataset.y),
-            // uso la fecha del servidor para guardar cuándo se ha creado
-            fechaCreacion: serverTimestamp()
-        });
-    } catch (error) {
-        nuevaNota.remove();
-        console.error("No se pudo guardar la nota:", error);
-        return;
-    }
 
-    activarGestos(nuevaNota);
-    creador.close();
+        // actualizo el texto y el color de la nota
+        // busco el documento por su id dentro de la coleccion del usuario
+        await updateDoc(doc(db, uid, id), {
+            texto: textoNota.value,
+            color: colorNota.value
+        });
+
+        // cierro el editor
+        editor.close();
+    } catch (error) {
+        // muestro el error en la consola del navegador
+        console.error(error);
+    }
 });
 
-// abro el formulario con el texto vacío y el color amarillo
+// abro el formulario para crear una nota
 crearNota.addEventListener("click", () => {
+
+    // dejo el texto vacio
     nuevoTexto.value = "";
+
+    // pongo el color amarillo por defecto
     nuevoColor.value = "#fff59d";
     creador.showModal();
 });
 
+// cierro el formulario sin crear la nota
 document.getElementById("cancelarCreacion").addEventListener("click", () => {
     creador.close();
 });
 
-// recibo las notas al abrir la pizarra y después los cambios sin recargar
-function escucharNotas() {
-    return onSnapshot(collection(db, "notas"), (resultado) => {
-        // doc changes me dice qué documentos se han añadido cambiado o borrado
+// creo una nota nueva
+document.getElementById("confirmarCreacion").addEventListener("click", async () => {
+
+    // cojo el id del usuario conectado
+    // el uid identifica al usuario y lo uso como nombre de su coleccion
+    const uid = auth.currentUser.uid;
+    try {
+
+        // añado la nota a la coleccion del usuario
+        // firebase genera el id de la nota y crea la coleccion si no existe
+        await addDoc(collection(db, uid), {
+            texto: nuevoTexto.value,
+            color: nuevoColor.value,
+            // calculo una posicion inicial cerca del centro de la pantalla
+            coordenadaX: pizarra.clientWidth / 2 - 75,
+            coordenadaY: pizarra.clientHeight / 2 - 75,
+            // guardo la fecha del servidor y no la del dispositivo
+            fechaCreacion: serverTimestamp()
+        });
+
+        // cierro el formulario
+        creador.close();
+    } catch (error) {
+        // muestro el error en la consola del navegador
+        console.error(error);
+    }
+});
+
+// escucho las notas del usuario en tiempo real
+function escucharNotas(uid) {
+    // escucho solo la coleccion del usuario y devuelvo la funcion que permite dejar de escuchar
+    return onSnapshot(collection(db, uid), (resultado) => {
+
+        // recorro los cambios que se han producido
+        // recorro los documentos nuevos modificados o eliminados
         resultado.docChanges().forEach((cambio) => {
+
+            // cojo el identificador de la nota
+            // firebase ya genera este id por eso no necesito guardarlo como otro campo
             const id = cambio.doc.id;
-            const notaExistente = pizarra.querySelector(`.nota[data-id="${id}"]`);
+
+            // cojo los datos de la nota
+            // data devuelve los campos guardados como texto color y coordenadas
             const datos = cambio.doc.data();
-    
-            // removed indica que la nota se ha borrado en firestore
+
+            // busco si la nota ya existe en la pantalla
+            // busco el div que tiene el mismo data id para no crear notas duplicadas
+            var nota = pizarra.querySelector(`.nota[data-id="${id}"]`);
+
+            // si se ha borrado la nota la quito de la pantalla
             if (cambio.type === "removed") {
-                // solo la quito si existe en la pantalla
-                notaExistente?.remove();
+                if (nota) {
+                    nota.remove();
+                }
+                // salgo de este bloque de la funcion para no continuar con el resto
                 return;
             }
-    
-            // modified indica que han cambiado los datos de una nota que ya existe
-            if (cambio.type === "modified" && notaExistente) {
-                notaExistente.textContent = datos.texto;
-                notaExistente.dataset.color = datos.color;
-                notaExistente.style.backgroundColor = datos.color;
-                notaExistente.dataset.x = datos.coordenadaX;
-                notaExistente.dataset.y = datos.coordenadaY;
-                colocarNota(notaExistente, datos.coordenadaX, datos.coordenadaY);
-                return;
+
+            // si la nota no existe creo un div
+            // si no existe en el html creo un elemento nuevo
+            if (!nota) {
+                nota = document.createElement("div");
+
+                // añado la clase del css
+                nota.classList.add("nota");
+
+                // guardo el id de firebase en la nota
+                // dataset guarda datos en el html y permite encontrar la nota en firebase
+                nota.dataset.id = id;
+
+                // añado la nota a la pizarra
+                pizarra.appendChild(nota);
+
+                // activo los gestos de la nota
+                activarGestos(nota);
             }
-    
-            // added indica que firestore me está mostrando esa nota por primera vez
-            // compruebo el id para evitar que salga dos veces
-            if (cambio.type !== "added" || notaExistente) {
-                return;
-            }
-    
-            // pongo la nota en pantalla con los datos y la posición guardados
-            const notaGuardada = document.createElement("div");
-            notaGuardada.classList.add("nota");
-            notaGuardada.dataset.id = id;
-            notaGuardada.dataset.color = datos.color;
-            notaGuardada.textContent = datos.texto;
-            notaGuardada.style.backgroundColor = datos.color;
-            notaGuardada.dataset.x = datos.coordenadaX;
-            notaGuardada.dataset.y = datos.coordenadaY;
-    
-            pizarra.appendChild(notaGuardada);
-            colocarNota(notaGuardada, datos.coordenadaX, datos.coordenadaY);
-            activarGestos(notaGuardada);
+
+            // pongo los datos de firebase en la nota
+            nota.textContent = datos.texto;
+            nota.style.backgroundColor = datos.color;
+
+            // guardo el color y las coordenadas
+            nota.dataset.color = datos.color;
+            // guardo las coordenadas para poder recolocar la nota al cambiar la pantalla
+            nota.dataset.x = datos.coordenadaX;
+            nota.dataset.y = datos.coordenadaY;
+
+            // coloco la nota en su posicion
+            colocarNota(nota, datos.coordenadaX, datos.coordenadaY);
         });
     }, (error) => {
-        console.error("No se pudieron cargar las notas:", error);
+        // muestro el error en la consola del navegador
+        console.error(error);
     });
 }
 
-let dejarDeEscuchar;
-
-// enseño la pizarra solo si el usuario ha iniciado sesión
+// detecto cuando un usuario inicia o cierra sesion
 onAuthStateChanged(auth, (usuario) => {
+
+    // dejo de escuchar las notas del usuario anterior
     if (dejarDeEscuchar) {
+        // cancelo la escucha anterior para no recibir notas de otra cuenta
         dejarDeEscuchar();
         dejarDeEscuchar = null;
     }
 
-    pizarra.querySelectorAll(".nota").forEach((nota) => nota.remove());
-    acceso.hidden = Boolean(usuario);
-    pizarra.hidden = !usuario;
+    // elimino las notas anteriores de la pantalla
+    pizarra.querySelectorAll(".nota").forEach((nota) => {
+        nota.remove();
+    });
 
+    // cierro los formularios
+    editor.close();
+    creador.close();
+    notaSeleccionada = null;
+
+    // compruebo si hay un usuario conectado
     if (usuario) {
-        dejarDeEscuchar = escucharNotas();
+
+        // oculto el inicio de sesion
+        acceso.hidden = true;
+
+        // muestro la pizarra
+        pizarra.hidden = false;
+
+        // muestro el nombre del usuario
+        nombreUsuario.textContent = usuario.displayName;
+
+        // muestro la foto del usuario
+        fotoUsuario.src = usuario.photoURL;
+
+        // cargo solamente las notas de ese usuario
+        // empiezo a escuchar la coleccion cuyo nombre es el uid y guardo como detener la escucha
+        dejarDeEscuchar = escucharNotas(usuario.uid);
     } else {
-        editor.close();
-        creador.close();
+
+        // muestro el inicio de sesion
+        acceso.hidden = false;
+
+        // oculto la pizarra
+        pizarra.hidden = true;
     }
 });
