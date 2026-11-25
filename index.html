@@ -9,7 +9,6 @@
 </head>
 <body>
 
-    <!-- pantalla para iniciar sesion con google -->
     <section id="acceso">
         <h1>Pizarra de post-its</h1>
         <button id="entrarGoogle" type="button">
@@ -18,12 +17,10 @@
         <p id="mensajeAcceso" role="alert"></p>
     </section>
 
-    <!-- pizarra oculta hasta iniciar sesion -->
     <main id="pizarra" hidden>
 
         <h1 id="tituloPizarra">Pizarra</h1>
 
-        <!-- informacion del usuario conectado -->
         <div id="usuario">
             <span id="nombreUsuario"></span>
             <img id="fotoUsuario" alt="Foto del usuario">
@@ -32,7 +29,6 @@
             </button>
         </div>
 
-        <!-- ventana para editar una nota -->
         <dialog id="editor">
             <h2>Editar nota</h2>
 
@@ -46,7 +42,6 @@
             <button id="cancelarEdicion" type="button">Cancelar</button>
         </dialog>
 
-        <!-- ventana para crear una nota -->
         <dialog id="creador">
             <h2>Crear nota</h2>
 
@@ -60,7 +55,6 @@
             <button id="cancelarCreacion" type="button">Cancelar</button>
         </dialog>
 
-        <!-- boton para abrir la ventana de creacion -->
         <button id="crearNota" type="button" aria-label="Crear nota">
             +
         </button>
